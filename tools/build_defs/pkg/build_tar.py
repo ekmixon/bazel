@@ -223,9 +223,7 @@ class TarFile(object):
     Args:
       tar: the tar file to add
     """
-    root = None
-    if self.directory and self.directory != '/':
-      root = self.directory
+    root = self.directory if self.directory and self.directory != '/' else None
     self.tarfile.add_tar(tar, numeric=True, root=root)
 
   def add_link(self, symlink, destination):
@@ -256,7 +254,7 @@ class TarFile(object):
       while current and not current.filename.startswith('data.'):
         current = arfile.next()
       if not current:
-        raise self.DebError(deb + ' does not contains a data file!')
+        raise self.DebError(f'{deb} does not contains a data file!')
       tmpfile = tempfile.mkstemp(suffix=os.path.splitext(current.filename)[-1])
       with open(tmpfile[1], 'wb') as f:
         f.write(current.data)

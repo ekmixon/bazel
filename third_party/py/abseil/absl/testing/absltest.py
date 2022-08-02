@@ -83,11 +83,8 @@ def get_default_test_srcdir():
 
 def get_default_test_tmpdir():
   """Returns default test temp dir."""
-  tmpdir = os.environ.get('TEST_TMPDIR', '')
-  if not tmpdir:
-    tmpdir = os.path.join(tempfile.gettempdir(), 'absl_testing')
-
-  return tmpdir
+  return os.environ.get('TEST_TMPDIR', '') or os.path.join(
+      tempfile.gettempdir(), 'absl_testing')
 
 
 def _get_default_randomize_ordering_seed():
@@ -133,8 +130,7 @@ def _get_default_randomize_ordering_seed():
       return seed
   except ValueError:
     pass
-  raise ValueError(
-      'Unknown test randomization seed value: {}'.format(randomize))
+  raise ValueError(f'Unknown test randomization seed value: {randomize}')
 
 
 flags.DEFINE_integer('test_random_seed', _get_default_test_random_seed(),
@@ -303,8 +299,7 @@ class TestCase(unittest.TestCase):
     try:
       self.assertSequenceEqual(prefix, whole[:prefix_len], msg)
     except AssertionError:
-      self.fail('prefix: %s not found at start of whole: %s.' %
-                (prefix, whole), msg)
+      self.fail(f'prefix: {prefix} not found at start of whole: {whole}.', msg)
 
   def assertEmpty(self, container, msg=None):
     """Asserts that an object has zero length.
@@ -351,8 +346,10 @@ class TestCase(unittest.TestCase):
                 '{!r}'.format(type(container).__name__), msg)
     if len(container) != expected_len:
       container_repr = unittest.util.safe_repr(container)
-      self.fail('{} has length of {}, expected {}.'.format(
-          container_repr, len(container), expected_len), msg)
+      self.fail(
+          f'{container_repr} has length of {len(container)}, expected {expected_len}.',
+          msg,
+      )
 
   def assertSequenceAlmostEqual(self, expected_seq, actual_seq, places=None,
                                 msg=None, delta=None):
@@ -377,8 +374,10 @@ class TestCase(unittest.TestCase):
       delta: The OK difference between compared values.
     """
     if len(expected_seq) != len(actual_seq):
-      self.fail('Sequence size mismatch: {} vs {}'.format(
-          len(expected_seq), len(actual_seq)), msg)
+      self.fail(
+          f'Sequence size mismatch: {len(expected_seq)} vs {len(actual_seq)}',
+          msg,
+      )
 
     err_list = []
     for idx, (exp_elem, act_elem) in enumerate(zip(expected_seq, actual_seq)):
@@ -386,7 +385,7 @@ class TestCase(unittest.TestCase):
         self.assertAlmostEqual(exp_elem, act_elem, places=places, msg=msg,
                                delta=delta)
       except self.failureException as err:
-        err_list.append('At index {}: {}'.format(idx, err))
+        err_list.append(f'At index {idx}: {err}')
 
     if err_list:
       if len(err_list) > 30:
@@ -396,21 +395,19 @@ class TestCase(unittest.TestCase):
 
   def assertContainsSubset(self, expected_subset, actual_set, msg=None):
     """Checks whether actual iterable is a superset of expected iterable."""
-    missing = set(expected_subset) - set(actual_set)
-    if not missing:
+    if missing := set(expected_subset) - set(actual_set):
+      self.fail('Missing elements %s\nExpected: %s\nActual: %s' % (
+          missing, expected_subset, actual_set), msg)
+    else:
       return
-
-    self.fail('Missing elements %s\nExpected: %s\nActual: %s' % (
-        missing, expected_subset, actual_set), msg)
 
   def assertNoCommonElements(self, expected_seq, actual_seq, msg=None):
     """Checks whether actual iterable and expected iterable are disjoint."""
-    common = set(expected_seq) & set(actual_seq)
-    if not common:
+    if common := set(expected_seq) & set(actual_seq):
+      self.fail('Common elements %s\nExpected: %s\nActual: %s' % (
+          common, expected_seq, actual_seq), msg)
+    else:
       return
-
-    self.fail('Common elements %s\nExpected: %s\nActual: %s' % (
-        common, expected_seq, actual_seq), msg)
 
   def assertItemsEqual(self, expected_seq, actual_seq, msg=None):
     """An unordered sequence specific comparison.
@@ -518,14 +515,11 @@ class TestCase(unittest.TestCase):
         'Second argument is not a string: %r' % (second,))
     line_limit = kwargs.pop('line_limit', 0)
     if kwargs:
-      raise TypeError('Unexpected keyword args {}'.format(tuple(kwargs)))
+      raise TypeError(f'Unexpected keyword args {tuple(kwargs)}')
 
     if first == second:
       return
-    if msg:
-      failure_message = [msg + ':\n']
-    else:
-      failure_message = ['\n']
+    failure_message = [msg + ':\n'] if msg else ['\n']
     if line_limit:
       line_limit += len(failure_message)
     for line in difflib.ndiff(first.splitlines(True), second.splitlines(True)):
@@ -536,8 +530,7 @@ class TestCase(unittest.TestCase):
       n_omitted = len(failure_message) - line_limit
       failure_message = failure_message[:line_limit]
       failure_message.append(
-          '(... and {} more delta lines omitted for brevity.)\n'.format(
-              n_omitted))
+          f'(... and {n_omitted} more delta lines omitted for brevity.)\n')
 
     raise self.failureException(''.join(failure_message))
 
@@ -600,7 +593,7 @@ class TestCase(unittest.TestCase):
       regex_type = bytes
 
     if regex_type is six.text_type:
-      regex = u'(?:%s)' % u')|(?:'.join(regexes)
+      regex = f"(?:{u')|(?:'.join(regexes)})"
     elif regex_type is bytes:
       regex = b'(?:' + (b')|(?:'.join(regexes)) + b')'
     else:
@@ -712,8 +705,7 @@ class TestCase(unittest.TestCase):
 
     def __exit__(self, exc_type, exc_value, tb):
       if exc_type is None:
-        self.test_case.fail(self.expected_exception.__name__ + ' not raised',
-                            self.msg)
+        self.test_case.fail(f'{self.expected_exception.__name__} not raised', self.msg)
       if not issubclass(exc_type, self.expected_exception):
         return False
       self.test_func(exc_value)
@@ -838,8 +830,10 @@ class TestCase(unittest.TestCase):
         pass
 
     if first_nonmatching is not None:
-      self.fail('%s not a subsequence of %s. First non-matching element: %s' %
-                (subsequence, container, first_nonmatching), msg)
+      self.fail(
+          f'{subsequence} not a subsequence of {container}. First non-matching element: {first_nonmatching}',
+          msg,
+      )
 
   def assertContainsExactSubsequence(self, container, subsequence, msg=None):
     """Asserts that "container" contains "subsequence" as an exact subsequence.
@@ -1031,7 +1025,7 @@ class TestCase(unittest.TestCase):
                        for k, v in six.iteritems(dikt))
       return '{%s}' % (', '.join('%s: %s' % pair for pair in entries))
 
-    message = ['%s != %s%s' % (Repr(a), Repr(b), ' (%s)' % msg if msg else '')]
+    message = [f"{Repr(a)} != {Repr(b)}{f' ({msg})' if msg else ''}"]
 
     # The standard library default output confounds lexical difference with
     # value difference; treat them separately.
@@ -1106,7 +1100,7 @@ class TestCase(unittest.TestCase):
     if self.maxDiff is not None:
       max_problems_to_show = self.maxDiff // 80
       if len(problems) > max_problems_to_show:
-        problems = problems[0:max_problems_to_show-1] + ['...']
+        problems = problems[:max_problems_to_show-1] + ['...']
 
     if problems:
       self.fail('; '.join(problems), msg)
@@ -1125,16 +1119,16 @@ class TestCase(unittest.TestCase):
     try:
       first_structured = json.loads(first)
     except ValueError as e:
-      raise ValueError(self._formatMessage(
-          msg,
-          'could not decode first JSON value %s: %s' % (first, e)))
+      raise ValueError(
+          self._formatMessage(msg,
+                              f'could not decode first JSON value {first}: {e}'))
 
     try:
       second_structured = json.loads(second)
     except ValueError as e:
-      raise ValueError(self._formatMessage(
-          msg,
-          'could not decode second JSON value %s: %s' % (second, e)))
+      raise ValueError(
+          self._formatMessage(
+              msg, f'could not decode second JSON value {second}: {e}'))
 
     self.assertSameStructure(first_structured, second_structured,
                              aname='first', bname='second', msg=msg)
@@ -1233,7 +1227,6 @@ def _walk_structure_for_problems(a, b, aname, bname, problem_list):
             '%s lacks [%r] but %s has it with value %r' %
             (aname, k, bname, b[k]))
 
-  # Strings/bytes are Sequences but we'll just do those with regular !=
   elif (isinstance(a, collections.Sequence) and
         not isinstance(a, _TEXT_OR_BINARY_TYPES)):
     minlen = min(len(a), len(b))
@@ -1248,9 +1241,8 @@ def _walk_structure_for_problems(a, b, aname, bname, problem_list):
       problem_list.append('%s lacks [%i] but %s has it with value %r' %
                           (aname, i, bname, b[i]))
 
-  else:
-    if a != b:
-      problem_list.append('%s is %r but %s is %r' % (aname, a, bname, b))
+  elif a != b:
+    problem_list.append('%s is %r but %s is %r' % (aname, a, bname, b))
 
 
 def get_command_string(command):
@@ -1263,16 +1255,12 @@ def get_command_string(command):
   """
   if isinstance(command, six.string_types):
     return command
-  else:
-    if os.name == 'nt':
-      return ' '.join(command)
-    else:
+  if os.name == 'nt':
+    return ' '.join(command)
       # The following is identical to Python 3's shlex.quote function.
-      command_string = ''
-      for word in command:
-        # Single quote word, and replace each ' in word with '"'"'
-        command_string += "'" + word.replace("'", "'\"'\"'") + "' "
-      return command_string[:-1]
+  command_string = ''.join(
+      "'" + word.replace("'", "'\"'\"'") + "' " for word in command)
+  return command_string[:-1]
 
 
 def get_command_stderr(command, env=None, close_fds=True):
@@ -1340,10 +1328,9 @@ class _TestProgramManualRun(unittest.TestProgram):
 def print_python_version():
   # Having this in the test output logs by default helps debugging when all
   # you've got is the log and no other idea of which Python was used.
-  sys.stderr.write('Running tests under Python {0[0]}.{0[1]}.{0[2]}: '
-                   '{1}\n'.format(
-                       sys.version_info,
-                       sys.executable if sys.executable else 'embedded.'))
+  sys.stderr.write(('Running tests under Python {0[0]}.{0[1]}.{0[2]}: '
+                    '{1}\n'.format(sys.version_info, sys.executable
+                                   or 'embedded.')))
 
 
 def main(*args, **kwargs):
@@ -1442,7 +1429,7 @@ def _run_in_app(function, args, kwargs):
     # Save command-line flags so the side effects of FLAGS(sys.argv) can be
     # undone.
     flag_objects = (FLAGS[name] for name in FLAGS)
-    saved_flags = dict((f.name, _SavedFlag(f)) for f in flag_objects)
+    saved_flags = {f.name: _SavedFlag(f) for f in flag_objects}
 
     # Change the default of alsologtostderr from False to True, so the test
     # programs's stderr will contain all the log messages.
@@ -1506,8 +1493,7 @@ class TestLoader(unittest.TestLoader):
 
   def __init__(self, *args, **kwds):
     super(TestLoader, self).__init__(*args, **kwds)
-    seed = _get_default_randomize_ordering_seed()
-    if seed:
+    if seed := _get_default_randomize_ordering_seed():
       self._seed = seed
       self._random = random.Random(self._seed)
     else:
@@ -1536,7 +1522,8 @@ def get_default_xml_output_filename():
   elif os.environ.get('TEST_XMLOUTPUTDIR'):
     return os.path.join(
         os.environ['TEST_XMLOUTPUTDIR'],
-        os.path.splitext(os.path.basename(sys.argv[0]))[0] + '.xml')
+        f'{os.path.splitext(os.path.basename(sys.argv[0]))[0]}.xml',
+    )
 
 
 def _setup_filtering(argv):
@@ -1591,8 +1578,9 @@ def _setup_sharding(custom_loader=None):
         f = open(os.environ['TEST_SHARD_STATUS_FILE'], 'w')
         f.write('')
       except IOError:
-        sys.stderr.write('Error opening TEST_SHARD_STATUS_FILE (%s). Exiting.'
-                         % os.environ['TEST_SHARD_STATUS_FILE'])
+        sys.stderr.write(
+            f"Error opening TEST_SHARD_STATUS_FILE ({os.environ['TEST_SHARD_STATUS_FILE']}). Exiting."
+        )
         sys.exit(1)
     finally:
       if f is not None: f.close()
@@ -1642,10 +1630,8 @@ def _run_and_get_tests_result(argv, args, kwargs, xml_test_runner_class):
   # TEST_XMLOUTPUTDIR variable or RUNNING_UNDER_TEST_DAEMON variable.
   if not FLAGS.xml_output_file:
     FLAGS.xml_output_file = get_default_xml_output_filename()
-  xml_output_file = FLAGS.xml_output_file
-
   xml_output = None
-  if xml_output_file:
+  if xml_output_file := FLAGS.xml_output_file:
     xml_output_dir = os.path.dirname(xml_output_file)
     if xml_output_dir and not os.path.isdir(xml_output_dir):
       try:

@@ -55,7 +55,7 @@ class UnsupportedArchitectureException(Exception):
 def CreateNativeLibsZip(aar, cpu, native_libs_zip):
   native_lib_pattern = re.compile("^jni/.+/.+\\.so$")
   if any(native_lib_pattern.match(filename) for filename in aar.namelist()):
-    cpu_pattern = re.compile("^jni/" + six.ensure_str(cpu) + "/.+\\.so$")
+    cpu_pattern = re.compile(f"^jni/{six.ensure_str(cpu)}" + "/.+\\.so$")
     libs = [name for name in aar.namelist() if cpu_pattern.match(name)]
     if not libs:
       raise UnsupportedArchitectureException()
@@ -81,8 +81,8 @@ def Main(input_aar_path, output_zip_path, cpu, input_aar_path_for_error_msg):
       try:
         CreateNativeLibsZip(input_aar, cpu, native_libs_zip)
       except UnsupportedArchitectureException:
-        print("AAR " + six.ensure_str(input_aar_path_for_error_msg) +
-              " missing native libs for requested architecture: " +
+        print((f"AAR {six.ensure_str(input_aar_path_for_error_msg)}" +
+               " missing native libs for requested architecture: ") +
               six.ensure_str(cpu))
         sys.exit(1)
 

@@ -97,12 +97,12 @@ class TestResult(object):
       self.assertXmlMessage("errors=\"%d\"" % errors)
 
   def assertTestPassed(self, test_name):
-    self.assertLogMessage("PASSED: %s" % test_name)
+    self.assertLogMessage(f"PASSED: {test_name}")
 
   def assertTestFailed(self, test_name, message=""):
-    self.assertLogMessage("%s FAILED" % test_name)
+    self.assertLogMessage(f"{test_name} FAILED")
     if message:
-      self.assertLogMessage("FAILED: %s" % message)
+      self.assertLogMessage(f"FAILED: {message}")
 
 
 class UnittestTest(unittest.TestCase):
@@ -135,7 +135,7 @@ class UnittestTest(unittest.TestCase):
       return os.environ["TEST_SRCDIR"]
 
     # Base on the current dir
-    return "%s/.." % os.getcwd()
+    return f"{os.getcwd()}/.."
 
   def execute_test(self, filename, env=None):
     """Executes the file and stores the results."""

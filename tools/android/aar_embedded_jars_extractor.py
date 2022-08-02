@@ -61,7 +61,7 @@ def ExtractEmbeddedJars(aar,
       # output_dir may be a temporary junction, so write the original
       # (unshortened) path to the params file
       singlejar_param_file.write(
-          six.ensure_binary((output_dir_orig + "/" + name + "\n"), "utf-8"))
+          six.ensure_binary(f"{output_dir_orig}/{name}" + "\n", "utf-8"))
       aar.extract(name, output_dir)
 
 

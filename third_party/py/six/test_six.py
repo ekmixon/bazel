@@ -86,10 +86,7 @@ def test_MAXSIZE():
 
 
 def test_lazy():
-    if six.PY3:
-        html_name = "html.parser"
-    else:
-        html_name = "HTMLParser"
+    html_name = "html.parser" if six.PY3 else "HTMLParser"
     assert html_name not in sys.modules
     mod = six.moves.html_parser
     assert sys.modules[html_name] is mod
@@ -119,7 +116,7 @@ def test_move_items(item_name):
     try:
         item = getattr(six.moves, item_name)
         if isinstance(item, types.ModuleType):
-            __import__("six.moves." + item_name)
+            __import__(f"six.moves.{item_name}")
     except AttributeError:
         if item_name == "zip_longest" and sys.version_info < (2, 6):
             py.test.skip("zip_longest only available on 2.6+")
@@ -384,9 +381,7 @@ def test_dictionary_iterators(monkeypatch):
         """Given a method suffix like "lists" or "values", return the name
         of the dict method that delivers those on the version of Python
         we're running in."""
-        if six.PY3:
-            return iterwhat
-        return 'iter' + iterwhat
+        return iterwhat if six.PY3 else f'iter{iterwhat}'
 
     class MyDict(dict):
         if not six.PY3:
@@ -400,7 +395,7 @@ def test_dictionary_iterators(monkeypatch):
 
     d = MyDict(zip(range(10), reversed(range(10))))
     for name in "keys", "values", "items", "lists":
-        meth = getattr(six, "iter" + name)
+        meth = getattr(six, f"iter{name}")
         it = meth(d)
         assert not isinstance(it, list)
         assert list(it) == list(getattr(d, name)())
@@ -409,6 +404,7 @@ def test_dictionary_iterators(monkeypatch):
         def with_kw(*args, **kw):
             record.append(kw["kw"])
             return old(*args)
+
         old = getattr(MyDict, stock_method_name(name))
         monkeypatch.setattr(MyDict, stock_method_name(name), with_kw)
         meth(d, kw=42)
@@ -423,13 +419,11 @@ def test_dictionary_views():
         """Given a method suffix like "keys" or "values", return the name
         of the dict method that delivers those on the version of Python
         we're running in."""
-        if six.PY3:
-            return viewwhat
-        return 'view' + viewwhat
+        return viewwhat if six.PY3 else f'view{viewwhat}'
 
     d = dict(zip(range(10), (range(11, 20))))
     for name in "keys", "values", "items":
-        meth = getattr(six, "view" + name)
+        meth = getattr(six, f"view{name}")
         view = meth(d)
         assert set(view) == set(getattr(d, name)())
 
@@ -589,10 +583,8 @@ def test_exec_():
 
 def test_reraise():
     def get_next(tb):
-        if six.PY3:
-            return tb.tb_next.tb_next
-        else:
-            return tb.tb_next
+        return tb.tb_next.tb_next if six.PY3 else tb.tb_next
+
     e = Exception("blah")
     try:
         raise e

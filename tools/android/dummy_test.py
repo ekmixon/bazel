@@ -18,5 +18,5 @@ are not under test. For example, we use this dummy test on Linux in a
 Windows-specific py_test rule.
 """
 
-if __name__ == "__main__":
-  pass
+
+pass

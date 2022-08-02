@@ -100,7 +100,7 @@ class GenRuleTest(test_base.TestBase):
     self.assertTrue(os.path.exists(script))
     self.assertTrue(os.path.exists(hello))
 
-    expected_content = '\n'.join(['Hello world' for _ in range(0, 1000)])
+    expected_content = '\n'.join(['Hello world' for _ in range(1000)])
     self.AssertFileContentContains(hello, expected_content)
 
   def testScriptFileIsUsedWithPowershell(self):
@@ -127,7 +127,7 @@ class GenRuleTest(test_base.TestBase):
     self.assertTrue(os.path.exists(script))
     self.assertTrue(os.path.exists(hello))
 
-    expected_content = '\n'.join(['Hello world' for _ in range(0, 1000)])
+    expected_content = '\n'.join(['Hello world' for _ in range(1000)])
     self.AssertFileContentContains(hello, expected_content)
 
   def testCommandFailsEagerlyInPowershell(self):

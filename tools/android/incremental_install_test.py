@@ -49,70 +49,70 @@ class MockAdb(object):
     self.abi = "armeabi-v7a"
 
   def Exec(self, args):
-    if self._error:
-      error_info, arg = self._error  # pylint: disable=unpacking-non-sequence
-      if not arg or arg in args:
-        return self._CreatePopenMock(*error_info)
+      if self._error:
+        error_info, arg = self._error  # pylint: disable=unpacking-non-sequence
+        if not arg or arg in args:
+          return self._CreatePopenMock(*error_info)
 
-    returncode = 0
-    stdout = ""
-    stderr = ""
-    cmd = args[1]
-    if cmd == "push":
-      # "/test/adb push local remote"
-      with open(args[2], "rb") as f:
-        content = f.read().decode("utf-8")
-      self.files[args[3]] = content
-    elif cmd == "pull":
-      # "/test/adb pull remote local"
-      remote = args[2]
-      local = args[3]
-      content = self.files.get(remote)
-      if content is not None:
-        with open(local, "wb") as f:
-          f.write(six.ensure_binary(content, "utf-8"))
-      else:
-        returncode = 1
-        stderr = "remote object '%s' does not exist\n" % remote
-    elif cmd == "install":
-      self.package_timestamp = self._last_package_timestamp
-      self._last_package_timestamp += 1
-      return self._CreatePopenMock(0, "Success", "")
-    elif cmd == "install-multiple":
-      if args[3] == "-p":
-        with open(args[5], "rb") as f:
-          content = f.read().decode("utf-8")
-        self.split_apks.add(content)
-      else:
+      returncode = 0
+      stdout = ""
+      stderr = ""
+      cmd = args[1]
+      if cmd == "push":
+          # "/test/adb push local remote"
+          with open(args[2], "rb") as f:
+            content = f.read().decode("utf-8")
+          self.files[args[3]] = content
+      elif cmd == "pull":
+        # "/test/adb pull remote local"
+        remote = args[2]
+        local = args[3]
+        content = self.files.get(remote)
+        if content is not None:
+          with open(local, "wb") as f:
+            f.write(six.ensure_binary(content, "utf-8"))
+        else:
+          returncode = 1
+          stderr = "remote object '%s' does not exist\n" % remote
+      elif cmd == "install":
         self.package_timestamp = self._last_package_timestamp
         self._last_package_timestamp += 1
-      return self._CreatePopenMock(0, "Success", "")
-    elif cmd == "uninstall":
-      self._CreatePopenMock(0, "Success", "")
-      self.split_apks = set()
-      self.package_timestamp = None
-    elif cmd == "shell":
-      # "/test/adb shell ..."
-      # mkdir, rm, am (application manager), or monkey
-      shell_cmdln = args[2]
-      self.shell_cmdlns.append(shell_cmdln)
-      if shell_cmdln.startswith(("mkdir", "am", "monkey", "input")):
-        pass
-      elif six.ensure_str(shell_cmdln).startswith("dumpsys package "):
-        if self.package_timestamp is not None:
-          timestamp = "firstInstallTime=%s" % self.package_timestamp
+        return self._CreatePopenMock(0, "Success", "")
+      elif cmd == "install-multiple":
+        if args[3] == "-p":
+          with open(args[5], "rb") as f:
+            content = f.read().decode("utf-8")
+          self.split_apks.add(content)
         else:
-          timestamp = ""
-        return self._CreatePopenMock(0, timestamp, "")
-      elif six.ensure_str(shell_cmdln).startswith("rm"):
-        file_path = shell_cmdln.split()[2]
-        self.files.pop(file_path, None)
-      elif six.ensure_str(shell_cmdln).startswith("getprop ro.product.cpu.abi"):
-        return self._CreatePopenMock(0, self.abi, "")
-      else:
-        raise Exception("Unknown shell command line: %s" % shell_cmdln)
-    # Return a mock subprocess.Popen object
-    return self._CreatePopenMock(returncode, stdout, stderr)
+          self.package_timestamp = self._last_package_timestamp
+          self._last_package_timestamp += 1
+        return self._CreatePopenMock(0, "Success", "")
+      elif cmd == "uninstall":
+        self._CreatePopenMock(0, "Success", "")
+        self.split_apks = set()
+        self.package_timestamp = None
+      elif cmd == "shell":
+          # "/test/adb shell ..."
+          # mkdir, rm, am (application manager), or monkey
+          shell_cmdln = args[2]
+          self.shell_cmdlns.append(shell_cmdln)
+          if shell_cmdln.startswith(("mkdir", "am", "monkey", "input")):
+              pass
+          elif six.ensure_str(shell_cmdln).startswith("dumpsys package "):
+              if self.package_timestamp is not None:
+                  timestamp = f"firstInstallTime={self.package_timestamp}"
+              else:
+                  timestamp = ""
+              return self._CreatePopenMock(0, timestamp, "")
+          elif six.ensure_str(shell_cmdln).startswith("rm"):
+            file_path = shell_cmdln.split()[2]
+            self.files.pop(file_path, None)
+          elif six.ensure_str(shell_cmdln).startswith("getprop ro.product.cpu.abi"):
+            return self._CreatePopenMock(0, self.abi, "")
+          else:
+              raise Exception(f"Unknown shell command line: {shell_cmdln}")
+      # Return a mock subprocess.Popen object
+      return self._CreatePopenMock(returncode, stdout, stderr)
 
   def _CreatePopenMock(self, returncode, stdout, stderr):
     return mock.Mock(
@@ -236,48 +236,48 @@ class IncrementalInstallTest(unittest.TestCase):
     self.assertEqual("resource apk", self._GetDeviceFile("resources.ap_"))
 
   def testSplitInstallToPristineDevice(self):
-    with open("split1", "wb") as f:
-      f.write(b"split_content1")
+      with open("split1", "wb") as f:
+        f.write(b"split_content1")
 
-    with open("main", "wb") as f:
-      f.write(b"main_Content")
+      with open("main", "wb") as f:
+        f.write(b"main_Content")
 
-    self._CallIncrementalInstall(
-        incremental=False, split_main_apk="main", split_apks=["split1"])
-    self.assertEqual(set(["split_content1"]), self._mock_adb.split_apks)
+      self._CallIncrementalInstall(
+          incremental=False, split_main_apk="main", split_apks=["split1"])
+      self.assertEqual({"split_content1"}, self._mock_adb.split_apks)
 
   def testSplitInstallUnchanged(self):
-    with open("split1", "wb") as f:
-      f.write(b"split_content1")
+      with open("split1", "wb") as f:
+        f.write(b"split_content1")
 
-    with open("main", "wb") as f:
-      f.write(b"main_Content")
+      with open("main", "wb") as f:
+        f.write(b"main_Content")
 
-    self._CallIncrementalInstall(
-        incremental=False, split_main_apk="main", split_apks=["split1"])
-    self.assertEqual(set(["split_content1"]), self._mock_adb.split_apks)
-    self._mock_adb.split_apks = set()
-    self._CallIncrementalInstall(
-        incremental=False, split_main_apk="main", split_apks=["split1"])
-    self.assertEqual(set([]), self._mock_adb.split_apks)
+      self._CallIncrementalInstall(
+          incremental=False, split_main_apk="main", split_apks=["split1"])
+      self.assertEqual({"split_content1"}, self._mock_adb.split_apks)
+      self._mock_adb.split_apks = set()
+      self._CallIncrementalInstall(
+          incremental=False, split_main_apk="main", split_apks=["split1"])
+      self.assertEqual(set([]), self._mock_adb.split_apks)
 
   def testSplitInstallChanges(self):
-    with open("split1", "wb") as f:
-      f.write(b"split_content1")
+      with open("split1", "wb") as f:
+        f.write(b"split_content1")
 
-    with open("main", "wb") as f:
-      f.write(b"main_Content")
+      with open("main", "wb") as f:
+        f.write(b"main_Content")
 
-    self._CallIncrementalInstall(
-        incremental=False, split_main_apk="main", split_apks=["split1"])
-    self.assertEqual(set(["split_content1"]), self._mock_adb.split_apks)
+      self._CallIncrementalInstall(
+          incremental=False, split_main_apk="main", split_apks=["split1"])
+      self.assertEqual({"split_content1"}, self._mock_adb.split_apks)
 
-    with open("split1", "wb") as f:
-      f.write(b"split_content2")
-    self._mock_adb.split_apks = set()
-    self._CallIncrementalInstall(
-        incremental=False, split_main_apk="main", split_apks=["split1"])
-    self.assertEqual(set(["split_content2"]), self._mock_adb.split_apks)
+      with open("split1", "wb") as f:
+        f.write(b"split_content2")
+      self._mock_adb.split_apks = set()
+      self._CallIncrementalInstall(
+          incremental=False, split_main_apk="main", split_apks=["split1"])
+      self.assertEqual({"split_content2"}, self._mock_adb.split_apks)
 
   def testMissingNativeManifestWithIncrementalInstall(self):
     self._CreateZip()
@@ -529,84 +529,87 @@ class IncrementalInstallTest(unittest.TestCase):
       self.assertTrue("Failure" in str(e))
 
   def testStartCold(self):
-    # Based on testUploadToPristineDevice
-    self._CreateZip()
+      # Based on testUploadToPristineDevice
+      self._CreateZip()
 
-    with open("dex1", "wb") as f:
-      f.write(b"content3")
+      with open("dex1", "wb") as f:
+        f.write(b"content3")
 
-    self._CreateLocalManifest(
-        "zip1 zp1 ip1 0",
-        "zip1 zp2 ip2 0",
-        "dex1 - ip3 0")
+      self._CreateLocalManifest(
+          "zip1 zp1 ip1 0",
+          "zip1 zp2 ip2 0",
+          "dex1 - ip3 0")
 
-    self._CallIncrementalInstall(incremental=False, start_type="cold")
+      self._CallIncrementalInstall(incremental=False, start_type="cold")
 
-    self.assertTrue(("monkey -p %s -c android.intent.category.LAUNCHER 1" %
-                     self._APP_PACKAGE) in self._mock_adb.shell_cmdlns)
+      self.assertTrue(
+          f"monkey -p {self._APP_PACKAGE} -c android.intent.category.LAUNCHER 1"
+          in self._mock_adb.shell_cmdlns
+      )
 
   def testDebugStart(self):
-    self._CreateZip()
+      self._CreateZip()
 
-    with open("dex1", "wb") as f:
-      f.write(b"content3")
+      with open("dex1", "wb") as f:
+        f.write(b"content3")
 
-    self._CreateLocalManifest(
-        "zip1 zp1 ip1 0",
-        "zip1 zp2 ip2 0",
-        "dex1 - ip3 0")
+      self._CreateLocalManifest(
+          "zip1 zp1 ip1 0",
+          "zip1 zp2 ip2 0",
+          "dex1 - ip3 0")
 
-    self._CallIncrementalInstall(incremental=False, start_type="debug")
-    enable_debug_cmd = ("am set-debug-app -w --persistent %s" %
-                        self._APP_PACKAGE)
-    start_app_cmd = ("monkey -p %s -c android.intent.category.LAUNCHER 1" %
-                     self._APP_PACKAGE)
-    self.assertTrue(enable_debug_cmd in self._mock_adb.shell_cmdlns)
-    self.assertTrue(start_app_cmd in self._mock_adb.shell_cmdlns)
+      self._CallIncrementalInstall(incremental=False, start_type="debug")
+      enable_debug_cmd = f"am set-debug-app -w --persistent {self._APP_PACKAGE}"
+      start_app_cmd = (
+          f"monkey -p {self._APP_PACKAGE} -c android.intent.category.LAUNCHER 1"
+      )
+
+      self.assertTrue(enable_debug_cmd in self._mock_adb.shell_cmdlns)
+      self.assertTrue(start_app_cmd in self._mock_adb.shell_cmdlns)
 
   def testColdStop(self):
-    self._CreateRemoteManifest(
-        "zip1 zp1 ip1 0",
-        "zip1 zip2 ip2 1",
-        "dex1 - ip3 0")
-    self._PutDeviceFile("dex/ip1", "content1")
-    self._PutDeviceFile("dex/ip2", "content2")
-    self._PutDeviceFile("dex/ip3", "content3")
-    self._PutDeviceFile("install_timestamp", "0")
-    self._mock_adb.package_timestamp = "0"
+      self._CreateRemoteManifest(
+          "zip1 zp1 ip1 0",
+          "zip1 zip2 ip2 1",
+          "dex1 - ip3 0")
+      self._PutDeviceFile("dex/ip1", "content1")
+      self._PutDeviceFile("dex/ip2", "content2")
+      self._PutDeviceFile("dex/ip3", "content3")
+      self._PutDeviceFile("install_timestamp", "0")
+      self._mock_adb.package_timestamp = "0"
 
-    self._CreateZip()
-    self._CreateLocalManifest(
-        "zip1 zp1 ip1 0",
-        "zip1 zip2 ip2 1",
-        "dex1 - ip3 0")
-    self._CallIncrementalInstall(incremental=True, start_type="cold")
+      self._CreateZip()
+      self._CreateLocalManifest(
+          "zip1 zp1 ip1 0",
+          "zip1 zip2 ip2 1",
+          "dex1 - ip3 0")
+      self._CallIncrementalInstall(incremental=True, start_type="cold")
 
-    stop_cmd = "am force-stop %s" % self._APP_PACKAGE
-    self.assertTrue(stop_cmd in self._mock_adb.shell_cmdlns)
+      stop_cmd = f"am force-stop {self._APP_PACKAGE}"
+      self.assertTrue(stop_cmd in self._mock_adb.shell_cmdlns)
 
   def testWarmStop(self):
-    self._CreateRemoteManifest(
-        "zip1 zp1 ip1 0",
-        "zip1 zip2 ip2 1",
-        "dex1 - ip3 0")
-    self._PutDeviceFile("dex/ip1", "content1")
-    self._PutDeviceFile("dex/ip2", "content2")
-    self._PutDeviceFile("dex/ip3", "content3")
-    self._PutDeviceFile("install_timestamp", "0")
-    self._mock_adb.package_timestamp = "0"
+      self._CreateRemoteManifest(
+          "zip1 zp1 ip1 0",
+          "zip1 zip2 ip2 1",
+          "dex1 - ip3 0")
+      self._PutDeviceFile("dex/ip1", "content1")
+      self._PutDeviceFile("dex/ip2", "content2")
+      self._PutDeviceFile("dex/ip3", "content3")
+      self._PutDeviceFile("install_timestamp", "0")
+      self._mock_adb.package_timestamp = "0"
 
-    self._CreateZip()
-    self._CreateLocalManifest(
-        "zip1 zp1 ip1 0",
-        "zip1 zip2 ip2 1",
-        "dex1 - ip3 0")
-    self._CallIncrementalInstall(incremental=True, start_type="warm")
+      self._CreateZip()
+      self._CreateLocalManifest(
+          "zip1 zp1 ip1 0",
+          "zip1 zip2 ip2 1",
+          "dex1 - ip3 0")
+      self._CallIncrementalInstall(incremental=True, start_type="warm")
 
-    background_cmd = "input keyevent KEYCODE_APP_SWITCH"
-    stop_cmd = "am kill %s" % self._APP_PACKAGE
-    self.assertTrue(background_cmd in self._mock_adb.shell_cmdlns)
-    self.assertTrue(stop_cmd in self._mock_adb.shell_cmdlns)
+      background_cmd = "input keyevent KEYCODE_APP_SWITCH"
+      stop_cmd = f"am kill {self._APP_PACKAGE}"
+      self.assertTrue(background_cmd in self._mock_adb.shell_cmdlns)
+      self.assertTrue(stop_cmd in self._mock_adb.shell_cmdlns)
 
   def testMultipleDevicesError(self):
     errors = [

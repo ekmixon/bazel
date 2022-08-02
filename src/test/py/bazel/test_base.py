@@ -96,12 +96,10 @@ class TestBase(unittest.TestCase):
           f.write('common --override_repository={}={}\n'.format(
               repo.replace('_for_testing', ''),
               os.path.join(shared_repo_home, repo).replace('\\', '/')))
-      shared_install_base = os.environ.get('TEST_INSTALL_BASE')
-      if shared_install_base:
-        f.write('startup --install_base={}\n'.format(shared_install_base))
-      shared_repo_cache = os.environ.get('REPOSITORY_CACHE')
-      if shared_repo_cache:
-        f.write('common --repository_cache={}\n'.format(shared_repo_cache))
+      if shared_install_base := os.environ.get('TEST_INSTALL_BASE'):
+        f.write(f'startup --install_base={shared_install_base}\n')
+      if shared_repo_cache := os.environ.get('REPOSITORY_CACHE'):
+        f.write(f'common --repository_cache={shared_repo_cache}\n')
         f.write('common --experimental_repository_cache_hardlinks\n')
     os.chdir(self._test_cwd)
 
@@ -171,7 +169,7 @@ class TestBase(unittest.TestCase):
         'load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")'
     ]
     rule_definition.extend(self.GetDefaultRepoRules())
-    self.ScratchFile(path, rule_definition + (lines if lines else []))
+    self.ScratchFile(path, rule_definition + (lines or []))
 
   def GetDefaultRepoRules(self):
     return self.GetCcRulesRepoRule()
@@ -345,11 +343,17 @@ class TestBase(unittest.TestCase):
     Returns:
       (int, [string], [string]) tuple: exit code, stdout lines, stderr lines
     """
-    return self.RunProgram([
-        self.Rlocation('io_bazel/src/bazel'),
-        '--bazelrc=' + self._test_bazelrc,
-        '--nomaster_bazelrc',
-    ] + args, env_remove, env_add, False, cwd)
+    return self.RunProgram(
+        ([
+            self.Rlocation('io_bazel/src/bazel'),
+            f'--bazelrc={self._test_bazelrc}',
+            '--nomaster_bazelrc',
+        ] + args),
+        env_remove,
+        env_add,
+        False,
+        cwd,
+    )
 
   def StartRemoteWorker(self):
     """Runs a "local remote worker" to run remote builds and tests on.
@@ -391,16 +395,15 @@ class TestBase(unittest.TestCase):
         [
             worker_exe,
             '--singlejar',
-            '--listen_port=' + str(port),
-            # This path has to be extremely short to avoid Windows path
-            # length restrictions.
-            '--work_path=' + worker_path,
-            '--cas_path=' + self._cas_path,
+            f'--listen_port={str(port)}',
+            f'--work_path={worker_path}',
+            f'--cas_path={self._cas_path}',
         ],
         stdout=self._worker_stdout,
         stderr=self._worker_stderr,
         cwd=self._test_cwd,
-        env=self._EnvMap(env_add=env_add))
+        env=self._EnvMap(env_add=env_add),
+    )
 
     return port
 
@@ -413,21 +416,19 @@ class TestBase(unittest.TestCase):
     self._worker_proc.wait()
 
     self._worker_stdout.seek(0)
-    stdout_lines = [
+    if stdout_lines := [
         l.decode(locale.getpreferredencoding()).strip()
         for l in self._worker_stdout.readlines()
-    ]
-    if stdout_lines:
+    ]:
       print('Local remote worker stdout')
       print('--------------------------')
       print('\n'.join(stdout_lines))
 
     self._worker_stderr.seek(0)
-    stderr_lines = [
+    if stderr_lines := [
         l.decode(locale.getpreferredencoding()).strip()
         for l in self._worker_stderr.readlines()
-    ]
-    if stderr_lines:
+    ]:
       print('Local remote worker stderr')
       print('--------------------------')
       print('\n'.join(stderr_lines))
@@ -461,9 +462,10 @@ class TestBase(unittest.TestCase):
             args,
             stdout=stdout,
             stderr=stderr,
-            cwd=(cwd if cwd else self._test_cwd),
+            cwd=cwd or self._test_cwd,
             env=self._EnvMap(env_remove, env_add),
-            shell=shell)
+            shell=shell,
+        )
         exit_code = proc.wait()
 
         stdout.seek(0)
@@ -499,8 +501,7 @@ class TestBase(unittest.TestCase):
           'JAVA_HOME', 'BAZEL_VC', 'BAZEL_VS', 'BAZEL_VC_FULL_VERSION',
           'BAZEL_WINSDK_FULL_VERSION'
       ]:
-        v = TestBase.GetEnv(k, '')
-        if v:
+        if v := TestBase.GetEnv(k, ''):
           env[k] = v
     else:
       env = {'HOME': os.path.join(self._temp, 'home')}

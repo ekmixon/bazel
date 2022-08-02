@@ -54,8 +54,7 @@ class ProguardConfigValidator(object):
   def ValidateAndWriteOutput(self):
     with open(self._config_path) as config:
       config_string = config.read()
-      invalid_configs = self._Validate(config_string)
-      if invalid_configs:
+      if invalid_configs := self._Validate(config_string):
         raise RuntimeError(
             'Invalid library proguard config parameters '
             '(these parameters are either invalid or only supported in '
@@ -75,7 +74,7 @@ class ProguardConfigValidator(object):
       arg = arg.strip()
       if not arg or self._ValidateArg(arg):
         continue
-      invalid_configs.append('-' + arg.split()[0])
+      invalid_configs.append(f'-{arg.split()[0]}')
 
     return invalid_configs
 

@@ -39,7 +39,7 @@ class ProguardConfigValidatorTest(unittest.TestCase):
     # This will raise an exception if the config is invalid.
     self._CreateValidator(input_path, output_path).ValidateAndWriteOutput()
     with open(output_path) as output:
-      self.assertTrue(("# Merged from %s" % input_path) in output.read())
+      self.assertTrue(f"# Merged from {input_path}" in output.read())
 
   def _TestInvalidConfig(self, invalid_args, config):
     tmpdir = os.environ["TEST_TMPDIR"]

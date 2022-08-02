@@ -97,7 +97,7 @@ class PywrapperTest(test_base.TestBase):
   def locate_runfile(self, runfile_path):
     resolved_path = self.Rlocation(runfile_path)
     self.assertIsNotNone(
-        resolved_path, msg="Could not locate %s in runfiles" % runfile_path)
+        resolved_path, msg=f"Could not locate {runfile_path} in runfiles")
     return resolved_path
 
   def setUp(self):

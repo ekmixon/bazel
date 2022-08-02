@@ -53,10 +53,7 @@ class TarFileWriter(object):
           2000-01-01, which is compatible with non *nix OSes'.
       preserve_tar_mtimes: if true, keep file mtimes from input tar file.
     """
-    if compression in ['bzip2', 'bz2']:
-      mode = 'w:bz2'
-    else:
-      mode = 'w:'
+    mode = 'w:bz2' if compression in ['bzip2', 'bz2'] else 'w:'
     self.gz = compression in ['tgz', 'gz']
     # Support xz compression through xz... until we can use Py3
     self.xz = compression in ['xz', 'lzma']
@@ -117,7 +114,7 @@ class TarFileWriter(object):
                            `depth` argument.
     """
     if not (name == self.root_directory or six.ensure_str(name).startswith('/')
-            or name.startswith(self.root_directory + '/')):
+            or name.startswith(f'{self.root_directory}/')):
       name = os.path.join(self.root_directory, name)
     if mtime is None:
       mtime = self.default_mtime
@@ -129,14 +126,15 @@ class TarFileWriter(object):
       # The x bit is set only to if the read bit is set.
       dirmode = (mode | ((0o444 & mode) >> 2)) if mode else mode
       self.add_file(
-          six.ensure_str(name) + '/',
+          f'{six.ensure_str(name)}/',
           tarfile.DIRTYPE,
           uid=uid,
           gid=gid,
           uname=uname,
           gname=gname,
           mtime=mtime,
-          mode=dirmode)
+          mode=dirmode,
+      )
       if depth <= 0:
         raise self.Error('Recursion depth exceeded, probably in '
                          'an infinite directory loop.')
@@ -204,8 +202,8 @@ class TarFileWriter(object):
       # Recurse into directory
       self.add_dir(name, file_content, uid, gid, uname, gname, mtime, mode)
       return
-    if not (name == self.root_directory or name.startswith('/') or
-            name.startswith(self.root_directory + '/')):
+    if not (name == self.root_directory or name.startswith('/')
+            or name.startswith(f'{self.root_directory}/')):
       name = os.path.join(self.root_directory, name)
     if kind == tarfile.DIRTYPE:
       name = name.rstrip('/')
@@ -277,7 +275,7 @@ class TarFileWriter(object):
     """
     if root and root[0] not in ['/', '.']:
       # Root prefix should start with a '/', adds it if missing
-      root = '/' + six.ensure_str(root)
+      root = f'/{six.ensure_str(root)}'
     compression = os.path.splitext(tar)[-1][1:]
     if compression == 'tgz':
       compression = 'gz'
@@ -298,9 +296,7 @@ class TarFileWriter(object):
       if subprocess.call('which xzcat', shell=True, stdout=subprocess.PIPE):
         raise self.Error('Cannot handle .xz and .lzma compression: '
                          'xzcat not found.')
-      p = subprocess.Popen('cat %s | xzcat' % tar,
-                           shell=True,
-                           stdout=subprocess.PIPE)
+      p = subprocess.Popen(f'cat {tar} | xzcat', shell=True, stdout=subprocess.PIPE)
       f = io.BytesIO(p.stdout.read())
       p.wait()
       intar = tarfile.open(fileobj=f, mode='r:')
@@ -309,9 +305,9 @@ class TarFileWriter(object):
         # prevent performance issues due to accidentally-introduced seeks
         # during intar traversal by opening in "streaming" mode. gz, bz2
         # are supported natively by python 2.7 and 3.x
-        inmode = 'r|' + six.ensure_str(compression)
+        inmode = f'r|{six.ensure_str(compression)}'
       else:
-        inmode = 'r:' + six.ensure_str(compression)
+        inmode = f'r:{six.ensure_str(compression)}'
       intar = tarfile.open(name=tar, mode=inmode)
     for tarinfo in intar:
       if name_filter is None or name_filter(tarinfo.name):
@@ -333,21 +329,23 @@ class TarFileWriter(object):
           name = os.path.join(self.root_directory, name)
         if root is not None:
           if name.startswith('.'):
-            name = '.' + root + name.lstrip('.')
+            name = f'.{root}' + name.lstrip('.')
             # Add root dir with same permissions if missing. Note that
             # add_file deduplicates directories and is safe to call here.
-            self.add_file('.' + root,
-                          tarfile.DIRTYPE,
-                          uid=tarinfo.uid,
-                          gid=tarinfo.gid,
-                          uname=tarinfo.uname,
-                          gname=tarinfo.gname,
-                          mtime=tarinfo.mtime,
-                          mode=0o755)
+            self.add_file(
+                f'.{root}',
+                tarfile.DIRTYPE,
+                uid=tarinfo.uid,
+                gid=tarinfo.gid,
+                uname=tarinfo.uname,
+                gname=tarinfo.gname,
+                mtime=tarinfo.mtime,
+                mode=0o755,
+            )
           # Relocate internal hardlinks as well to avoid breaking them.
           link = tarinfo.linkname
           if link.startswith('.') and tarinfo.type == tarfile.LNKTYPE:
-            tarinfo.linkname = '.' + root + link.lstrip('.')
+            tarinfo.linkname = f'.{root}' + link.lstrip('.')
         tarinfo.name = name
 
         if tarinfo.isfile():

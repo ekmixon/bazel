@@ -41,9 +41,7 @@ def main():
       for line in obj_file_list:
         obj_file_path = line.rstrip('\n')
 
-        hashed_obj_file_name = '%s_%s.o' % (
-            os.path.basename(os.path.splitext(obj_file_path)[0]),
-            hashlib.md5(obj_file_path.encode('utf-8')).hexdigest())
+        hashed_obj_file_name = f"{os.path.basename(os.path.splitext(obj_file_path)[0])}_{hashlib.md5(obj_file_path.encode('utf-8')).hexdigest()}.o"
         hashed_obj_file_path = os.path.join(outdir, hashed_obj_file_name)
 
         hashed_obj_file_list.write(hashed_obj_file_path + '\n')

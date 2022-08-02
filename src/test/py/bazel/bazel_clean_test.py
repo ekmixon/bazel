@@ -41,7 +41,7 @@ class BazelCleanTest(test_base.TestBase):
 
     # Repeat 10 times to ensure flaky error like
     # https://github.com/bazelbuild/bazel/issues/5907 are caught.
-    for _ in range(0, 10):
+    for _ in range(10):
       exit_code, _, stderr = self.RunBazel(['build', '//foo:x'])
       self.AssertExitCode(exit_code, 0, stderr)
       self.assertTrue(os.path.exists(
@@ -111,8 +111,7 @@ class BazelCleanTest(test_base.TestBase):
   def _findMatch(self, pattern, items):
     r = re.compile(pattern)
     for line in items:
-      matcher = r.search(line)
-      if matcher:
+      if matcher := r.search(line):
         return matcher
     return None
 
